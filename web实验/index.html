@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北京中轴线 · 时空叙事地图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        /* 地图铺满全屏 */
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 顶部悬浮标题栏 */
+        .top-title {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.92);
+            padding: 12px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 999;
+            font-size: 20px;
+            font-weight: bold;
+            color: #c13c37;
+            letter-spacing: 2px;
+        }
+
+        /* 底部悬浮章节导航（适配5个按钮） */
+        .nav-box {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.92);
+            padding: 15px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.15);
+            z-index: 999;
+            display: flex;
+            gap: 10px;
+        }
+        .nav-btn {
+            padding: 8px 14px;
+            border-radius: 30px;
+            border: none;
+            background: #f1f1f1;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+        .nav-btn:hover, .nav-btn.active {
+            background: #c13c37;
+            color: #fff;
+        }
+
+        /* 地图内部图文弹窗卡片样式 */
+        .pop-card {
+            width: 280px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            background: #fff;
+        }
+        .pop-card-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: #f5f5f5;
+            display: block;
+        }
+        .pop-card-text {
+            padding: 15px;
+        }
+        .pop-card-text h4 {
+            color: #c13c37;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .pop-card-text p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+        }
+    </style>
+
+    <!-- 稳定地图内核 -->
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+</head>
+<body>
+
+    <!-- 顶部标题 -->
+    <div class="top-title">北京中轴线 · 时空叙事地图</div>
+
+    <!-- 地图容器 -->
+    <div id="map"></div>
+
+    <!-- 底部导航按钮（5个地点） -->
+    <div class="nav-box">
+        <button class="nav-btn active" onclick="switchSite(0)">永定门</button>
+        <button class="nav-btn" onclick="switchSite(1)">正阳门</button>
+        <button class="nav-btn" onclick="switchSite(2)">紫禁城</button>
+        <button class="nav-btn" onclick="switchSite(3)">景山</button>
+        <button class="nav-btn" onclick="switchSite(4)">钟鼓楼</button>
+    </div>
+
+<script>
+// 初始化地图 + 高德高清底图（秒加载不卡）
+const map = L.map('map').setView([39.9075, 116.3972], 11);
+L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    attribution: ''
+}).addTo(map);
+
+// 所有点位数据：坐标 + 标题 + 你的本地图片 + 介绍文案
+const siteData = [
+    {
+        latlng: [39.8666, 116.3963],
+        title: '开端 · 永定门',
+        img: './images/yongdingmen.jpg',
+        desc: '永定门是北京外城正门，中轴线南端起点，始建于明嘉靖三十二年，寓意永世安定，是古都轴线文化的开端。'
+    },
+    {
+        latlng: [39.9000, 116.3970],
+        title: '过渡 · 正阳门',
+        img: './images/zhengyangmen.jpg',
+        desc: '正阳门是明清北京内城的正门，也是中轴线的核心节点之一，俗称“前门”，是北京城内唯一保存完整的城门建筑。'
+    },
+    {
+        latlng: [39.9163, 116.3970],
+        title: '发展 · 紫禁城太和殿',
+        img: './images/zijincheng.jpg',
+        desc: '紫禁城坐落于中轴线核心，太和殿为皇权中心，建筑严格中轴对称，体现古代“居中为尊”规划思想。'
+    },
+    {
+        latlng: [39.9199, 116.3962],
+        title: '高潮 · 景山万春亭',
+        img: './images/jingshan.jpg',
+        desc: '景山为中轴线制高点，登顶可俯瞰全城，既是皇家园林，也是北京城背山面水格局的重要组成部分。'
+    },
+    {
+        latlng: [39.9475, 116.3955],
+        title: '结尾 · 钟鼓楼',
+        img: './images/zhonggulou.jpg',
+        desc: '钟鼓楼位于中轴线北端终点，是元明清三代官方报时中心，见证古都日夜时序流转与城市岁月变迁。'
+    }
+];
+
+// 自定义高级红色标记点样式
+const markerOpt = {
+    radius: 8,
+    fillColor: "#c13c37",
+    color: "#fff",
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 0.9
+};
+
+// 画线：中轴线完整路径（5个点的连续线条）
+const pathLine = L.polyline(
+    siteData.map(item => item.latlng),
+    {color:"#c13c37", weight:4, opacity:0.7}
+).addTo(map);
+
+let markerList = [];
+let currentPopup = null;
+
+// 批量添加标记 + 点击弹出地图内图文卡片
+siteData.forEach((item, idx) => {
+    let m = L.circleMarker(item.latlng, markerOpt).addTo(map);
+    markerList.push(m);
+
+    m.on('click', ()=>{
+        flyAndShow(idx);
+    });
+});
+
+// 飞行到点位 + 地图内弹出图文卡片
+function flyAndShow(idx){
+    // 地图平滑飞行
+    map.flyTo(siteData[idx].latlng, 15, {duration:2});
+
+    // 关闭之前弹窗
+    if(currentPopup) map.closePopup();
+
+    // 组装高级图文卡片 HTML
+    let popHtml = `
+    <div class="pop-card">
+        <img class="pop-card-img" src="${siteData[idx].img}" alt="${siteData[idx].title}">
+        <div class="pop-card-text">
+            <h4>${siteData[idx].title}</h4>
+            <p>${siteData[idx].desc}</p>
+        </div>
+    </div>
+    `;
+
+    // 在地图点位内部弹出图文
+    currentPopup = L.popup({
+        closeButton: true,
+        className: 'my-pop'
+    })
+    .setLatLng(siteData[idx].latlng)
+    .setContent(popHtml)
+    .openOn(map);
+}
+
+// 底部按钮切换 + 激活样式
+function switchSite(idx){
+    // 按钮高亮
+    document.querySelectorAll('.nav-btn').forEach((btn,i)=>{
+        btn.classList.toggle('active', i===idx);
+    });
+    flyAndShow(idx);
+}
+
+// 默认打开第一个点位
+flyAndShow(0);
+</script>
+</body>
+</html>
